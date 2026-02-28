@@ -1,0 +1,603 @@
+{
+  "metadata": {
+    "quarter": "2025_Q3",
+    "trainingPeriod": "2020-01-01 to 2025-09-30",
+    "trainedAt": "2026-01-20T21:44:37.254842",
+    "symbolsUsed": [
+      "BTC",
+      "ETH",
+      "BNB",
+      "XRP",
+      "SOL",
+      "DOGE",
+      "ADA",
+      "LINK",
+      "AVAX",
+      "HBAR",
+      "LTC",
+      "DOT",
+      "ETC",
+      "ATOM"
+    ],
+    "totalObservations": 6871,
+    "configName": "default"
+  },
+  "horizons": {
+    "3d": {
+      "factors": [
+        "ar1_z",
+        "mr_speed_z",
+        "var_ratio_z",
+        "hurst_z",
+        "trend_slope_z",
+        "mom_rank_z",
+        "mom_sharpe_z",
+        "vol_skew_z",
+        "gold_mom_z",
+        "mstr_mom_z",
+        "m2_mom_z",
+        "m2_beta_z"
+      ],
+      "factorParams": {
+        "ar1_z": {
+          "factor_window": 40,
+          "norm_window": 180
+        },
+        "mr_speed_z": {
+          "factor_window": 40,
+          "norm_window": 180
+        },
+        "var_ratio_z": {
+          "factor_window": 40,
+          "norm_window": 504
+        },
+        "hurst_z": {
+          "factor_window": 20,
+          "norm_window": 504
+        },
+        "trend_slope_z": {
+          "factor_window": 120,
+          "norm_window": 180
+        },
+        "mom_rank_z": {
+          "factor_window": 90,
+          "norm_window": 180
+        },
+        "mom_sharpe_z": {
+          "factor_window": 120,
+          "norm_window": 180
+        },
+        "vol_skew_z": {
+          "factor_window": 20,
+          "norm_window": 180
+        },
+        "gold_mom_z": {
+          "factor_window": 65,
+          "norm_window": 180
+        },
+        "mstr_mom_z": {
+          "factor_window": 65,
+          "norm_window": 180
+        },
+        "m2_mom_z": {
+          "factor_window": 65,
+          "norm_window": 180
+        },
+        "m2_beta_z": {
+          "factor_window": 65,
+          "norm_window": 180
+        }
+      },
+      "ridge": {
+        "alpha": 1000.0,
+        "intercept": 0.0032667301893000954,
+        "coefs": {
+          "ar1_z": 0.0015178960683334952,
+          "mr_speed_z": -0.0022727114286410764,
+          "hurst_z": 0.0007449355881005426,
+          "m2_mom_z": 0.001997367575672672,
+          "m2_beta_z": -0.0001582320047162751
+        }
+      },
+      "q10": {
+        "method": "gbm",
+        "intercept": -0.06079294043726634,
+        "feature_importances": {
+          "ar1_z": 0.20204572444857372,
+          "mr_speed_z": 0.19087680247994185,
+          "hurst_z": 0.10832331782427974,
+          "m2_mom_z": 0.22356432308953558,
+          "m2_beta_z": 0.2751898321576691
+        }
+      },
+      "q50": {
+        "method": "gbm",
+        "intercept": 0.002111528124339326,
+        "feature_importances": {
+          "ar1_z": 0.1527860026041813,
+          "mr_speed_z": 0.15175234113322522,
+          "hurst_z": 0.2115655048698055,
+          "m2_mom_z": 0.3197946437108274,
+          "m2_beta_z": 0.16410150768196055
+        }
+      },
+      "q90": {
+        "method": "gbm",
+        "intercept": 0.06964080984754518,
+        "feature_importances": {
+          "ar1_z": 0.15641788952423893,
+          "mr_speed_z": 0.1878588280028417,
+          "hurst_z": 0.19999063705183365,
+          "m2_mom_z": 0.25936568280081146,
+          "m2_beta_z": 0.19636696262027434
+        }
+      },
+      "spreadBaseline": {
+        "mean": 0.13043375028481152,
+        "std": 0.02091865511916218
+      },
+      "n_samples": 2301,
+      "factor_selection": {
+        "method": "train_ic_only",
+        "min_ic": 0.03,
+        "selected": [
+          "ar1_z",
+          "mr_speed_z",
+          "hurst_z",
+          "m2_mom_z",
+          "m2_beta_z"
+        ],
+        "original_factors": [
+          "ar1_z",
+          "mr_speed_z",
+          "hurst_z",
+          "m2_mom_z",
+          "m2_beta_z"
+        ],
+        "ic_values": {
+          "ar1_z": 0.0750470002908173,
+          "mr_speed_z": -0.07649807966291447,
+          "var_ratio_z": 0.019667926764800083,
+          "hurst_z": 0.03870773406524538,
+          "trend_slope_z": 0.012352018993773334,
+          "mom_rank_z": 0.013318212257670941,
+          "mom_sharpe_z": 0.01672828421384662,
+          "vol_skew_z": 0.001080859924132799,
+          "gold_mom_z": 0.02931023957373234,
+          "mstr_mom_z": -0.004727168519756179,
+          "m2_mom_z": 0.05482622574702592,
+          "m2_beta_z": -0.03215811182873003
+        }
+      },
+      "config": {
+        "target_type": "returns",
+        "orthogonalize": false,
+        "quantile_method": "gbm"
+      }
+    },
+    "7d": {
+      "factors": [
+        "ar1_z",
+        "mr_speed_z",
+        "var_ratio_z",
+        "hurst_z",
+        "trend_slope_z",
+        "mom_rank_z",
+        "mom_sharpe_z",
+        "vol_downside_z",
+        "vol_skew_z",
+        "nasdaq_beta_z",
+        "spy_beta_z",
+        "gold_mom_z",
+        "gold_beta_z",
+        "dxy_mom_z",
+        "mstr_mom_z",
+        "m2_beta_z",
+        "vix_level_z"
+      ],
+      "factorParams": {
+        "ar1_z": {
+          "factor_window": 40,
+          "norm_window": 180
+        },
+        "mr_speed_z": {
+          "factor_window": 40,
+          "norm_window": 180
+        },
+        "var_ratio_z": {
+          "factor_window": 20,
+          "norm_window": 180
+        },
+        "hurst_z": {
+          "factor_window": 20,
+          "norm_window": 360
+        },
+        "trend_slope_z": {
+          "factor_window": 120,
+          "norm_window": 180
+        },
+        "mom_rank_z": {
+          "factor_window": 60,
+          "norm_window": 180
+        },
+        "mom_sharpe_z": {
+          "factor_window": 120,
+          "norm_window": 180
+        },
+        "vol_downside_z": {
+          "factor_window": 60,
+          "norm_window": 504
+        },
+        "vol_skew_z": {
+          "factor_window": 20,
+          "norm_window": 180
+        },
+        "nasdaq_beta_z": {
+          "factor_window": 50,
+          "norm_window": 180
+        },
+        "spy_beta_z": {
+          "factor_window": 50,
+          "norm_window": 180
+        },
+        "gold_mom_z": {
+          "factor_window": 50,
+          "norm_window": 180
+        },
+        "gold_beta_z": {
+          "factor_window": 50,
+          "norm_window": 180
+        },
+        "dxy_mom_z": {
+          "factor_window": 50,
+          "norm_window": 180
+        },
+        "mstr_mom_z": {
+          "factor_window": 50,
+          "norm_window": 180
+        },
+        "m2_beta_z": {
+          "factor_window": 50,
+          "norm_window": 180
+        },
+        "vix_level_z": {
+          "factor_window": 50,
+          "norm_window": 180
+        }
+      },
+      "ridge": {
+        "alpha": 1000.0,
+        "intercept": 0.009252168573751662,
+        "coefs": {
+          "ar1_z": 0.0030005534751062573,
+          "mr_speed_z": -0.004889581343129529,
+          "var_ratio_z": 0.0029768770270568764,
+          "hurst_z": 0.0033020469726559327,
+          "vol_downside_z": 0.0029807696805659862,
+          "nasdaq_beta_z": -0.0035155445661237076,
+          "gold_mom_z": 0.0032243745025548826,
+          "vix_level_z": 0.0020190102663636207
+        }
+      },
+      "q10": {
+        "method": "gbm",
+        "intercept": -0.08650095442296155,
+        "feature_importances": {
+          "ar1_z": 0.06982852081614215,
+          "mr_speed_z": 0.13289782522304236,
+          "var_ratio_z": 0.07392243152090731,
+          "hurst_z": 0.09768889195798408,
+          "vol_downside_z": 0.1822103056672914,
+          "nasdaq_beta_z": 0.11300949501241395,
+          "gold_mom_z": 0.14425257186037485,
+          "vix_level_z": 0.18618995794184387
+        }
+      },
+      "q50": {
+        "method": "gbm",
+        "intercept": 0.004957848456987137,
+        "feature_importances": {
+          "ar1_z": 0.10160145203758304,
+          "mr_speed_z": 0.08080642172727527,
+          "var_ratio_z": 0.028570722699279825,
+          "hurst_z": 0.11526201179991968,
+          "vol_downside_z": 0.2502284079946133,
+          "nasdaq_beta_z": 0.14480557687277817,
+          "gold_mom_z": 0.14261553954262965,
+          "vix_level_z": 0.13610986732592115
+        }
+      },
+      "q90": {
+        "method": "gbm",
+        "intercept": 0.10513138830219405,
+        "feature_importances": {
+          "ar1_z": 0.06199017961057928,
+          "mr_speed_z": 0.04339011357799487,
+          "var_ratio_z": 0.05033224036389269,
+          "hurst_z": 0.15108033896432146,
+          "vol_downside_z": 0.2508976274120819,
+          "nasdaq_beta_z": 0.0837197190884008,
+          "gold_mom_z": 0.13739581482147845,
+          "vix_level_z": 0.22119396616125056
+        }
+      },
+      "spreadBaseline": {
+        "mean": 0.1916323427251556,
+        "std": 0.03614033463045547
+      },
+      "n_samples": 2253,
+      "factor_selection": {
+        "method": "train_ic_only",
+        "min_ic": 0.03,
+        "selected": [
+          "ar1_z",
+          "mr_speed_z",
+          "var_ratio_z",
+          "hurst_z",
+          "vol_downside_z",
+          "nasdaq_beta_z",
+          "gold_mom_z",
+          "vix_level_z"
+        ],
+        "original_factors": [
+          "ar1_z",
+          "mr_speed_z",
+          "var_ratio_z",
+          "hurst_z",
+          "vol_downside_z",
+          "nasdaq_beta_z",
+          "gold_mom_z",
+          "vix_level_z"
+        ],
+        "ic_values": {
+          "ar1_z": 0.10086636738148368,
+          "mr_speed_z": -0.10308655702314694,
+          "var_ratio_z": 0.08126286378470986,
+          "hurst_z": 0.0923762671422907,
+          "trend_slope_z": 0.018686455195171342,
+          "mom_rank_z": 0.013830807420931639,
+          "mom_sharpe_z": 0.028486716467902778,
+          "vol_downside_z": 0.044544192900004526,
+          "vol_skew_z": 0.004044188015506559,
+          "nasdaq_beta_z": -0.04182955691705999,
+          "spy_beta_z": -0.011687195400386072,
+          "gold_mom_z": 0.034199037328634774,
+          "gold_beta_z": 0.02762701106985215,
+          "dxy_mom_z": 0.025501015253164377,
+          "mstr_mom_z": 0.019557372554863832,
+          "m2_beta_z": -0.0060236742902322355,
+          "vix_level_z": 0.05260795445828413
+        }
+      },
+      "config": {
+        "target_type": "returns",
+        "orthogonalize": false,
+        "quantile_method": "gbm"
+      }
+    },
+    "15d": {
+      "factors": [
+        "ar1_z",
+        "mr_speed_z",
+        "var_ratio_z",
+        "hurst_z",
+        "trend_slope_z",
+        "mom_rank_z",
+        "mom_sharpe_z",
+        "vol_downside_z",
+        "vol_skew_z",
+        "gold_mom_z",
+        "gold_beta_z",
+        "dxy_mom_z",
+        "mstr_mom_z",
+        "m2_mom_z",
+        "m2_beta_z",
+        "vix_level_z",
+        "vix_chg_z"
+      ],
+      "factorParams": {
+        "ar1_z": {
+          "factor_window": 40,
+          "norm_window": 180
+        },
+        "mr_speed_z": {
+          "factor_window": 40,
+          "norm_window": 180
+        },
+        "var_ratio_z": {
+          "factor_window": 20,
+          "norm_window": 180
+        },
+        "hurst_z": {
+          "factor_window": 20,
+          "norm_window": 504
+        },
+        "trend_slope_z": {
+          "factor_window": 120,
+          "norm_window": 180
+        },
+        "mom_rank_z": {
+          "factor_window": 60,
+          "norm_window": 180
+        },
+        "mom_sharpe_z": {
+          "factor_window": 90,
+          "norm_window": 180
+        },
+        "vol_downside_z": {
+          "factor_window": 60,
+          "norm_window": 180
+        },
+        "vol_skew_z": {
+          "factor_window": 20,
+          "norm_window": 504
+        },
+        "gold_mom_z": {
+          "factor_window": 40,
+          "norm_window": 180
+        },
+        "gold_beta_z": {
+          "factor_window": 40,
+          "norm_window": 180
+        },
+        "dxy_mom_z": {
+          "factor_window": 40,
+          "norm_window": 180
+        },
+        "mstr_mom_z": {
+          "factor_window": 40,
+          "norm_window": 180
+        },
+        "m2_mom_z": {
+          "factor_window": 40,
+          "norm_window": 180
+        },
+        "m2_beta_z": {
+          "factor_window": 40,
+          "norm_window": 180
+        },
+        "vix_level_z": {
+          "factor_window": 40,
+          "norm_window": 180
+        },
+        "vix_chg_z": {
+          "factor_window": 40,
+          "norm_window": 180
+        }
+      },
+      "ridge": {
+        "alpha": 1000.0,
+        "intercept": 0.018072273874681837,
+        "coefs": {
+          "ar1_z": 0.003370636570179743,
+          "mr_speed_z": -0.006078661521749411,
+          "var_ratio_z": 0.0029058008064634655,
+          "hurst_z": 0.007779747375228904,
+          "trend_slope_z": -0.0032369986720901358,
+          "mom_rank_z": 0.0015945206142648693,
+          "mom_sharpe_z": 0.010255248887915838,
+          "vol_downside_z": 0.00777487753862112,
+          "gold_beta_z": 0.0029805560490128056,
+          "dxy_mom_z": 0.010066550253327193,
+          "m2_mom_z": 0.018218823009400222,
+          "vix_level_z": 0.010138689028621877
+        }
+      },
+      "q10": {
+        "method": "gbm",
+        "intercept": -0.10507987823373335,
+        "feature_importances": {
+          "ar1_z": 0.03983720851295735,
+          "mr_speed_z": 0.07862435610151733,
+          "var_ratio_z": 0.023115248953201682,
+          "hurst_z": 0.06438725056957807,
+          "trend_slope_z": 0.17543907775199666,
+          "mom_rank_z": 0.11929843756994236,
+          "mom_sharpe_z": 0.03848578748038738,
+          "vol_downside_z": 0.08849325356063192,
+          "gold_beta_z": 0.030783528546763163,
+          "dxy_mom_z": 0.11335268528575351,
+          "m2_mom_z": 0.19234893532654712,
+          "vix_level_z": 0.03583423034072347
+        }
+      },
+      "q50": {
+        "method": "gbm",
+        "intercept": 0.016299535242590906,
+        "feature_importances": {
+          "ar1_z": 0.08378479917190229,
+          "mr_speed_z": 0.031941588986556614,
+          "var_ratio_z": 0.012023603998061077,
+          "hurst_z": 0.06955398447709212,
+          "trend_slope_z": 0.11703550541274274,
+          "mom_rank_z": 0.08587182571774234,
+          "mom_sharpe_z": 0.04126758023464672,
+          "vol_downside_z": 0.08444855768177607,
+          "gold_beta_z": 0.04095208562564997,
+          "dxy_mom_z": 0.10305284438711063,
+          "m2_mom_z": 0.2353520061851231,
+          "vix_level_z": 0.09471561812159619
+        }
+      },
+      "q90": {
+        "method": "gbm",
+        "intercept": 0.14881445353951334,
+        "feature_importances": {
+          "ar1_z": 0.0558887305558234,
+          "mr_speed_z": 0.08388072891316882,
+          "var_ratio_z": 0.012100262629255067,
+          "hurst_z": 0.052704903114082435,
+          "trend_slope_z": 0.13446817821596305,
+          "mom_rank_z": 0.04531294296242898,
+          "mom_sharpe_z": 0.05347709094384166,
+          "vol_downside_z": 0.12054531140567598,
+          "gold_beta_z": 0.038827806294203904,
+          "dxy_mom_z": 0.16976286784007558,
+          "m2_mom_z": 0.15407450701686368,
+          "vix_level_z": 0.07895667010861743
+        }
+      },
+      "spreadBaseline": {
+        "mean": 0.2538943317732467,
+        "std": 0.06634603695509154
+      },
+      "n_samples": 2317,
+      "factor_selection": {
+        "method": "train_ic_only",
+        "min_ic": 0.03,
+        "selected": [
+          "ar1_z",
+          "mr_speed_z",
+          "var_ratio_z",
+          "hurst_z",
+          "trend_slope_z",
+          "mom_rank_z",
+          "mom_sharpe_z",
+          "vol_downside_z",
+          "gold_beta_z",
+          "dxy_mom_z",
+          "m2_mom_z",
+          "vix_level_z"
+        ],
+        "original_factors": [
+          "ar1_z",
+          "mr_speed_z",
+          "var_ratio_z",
+          "hurst_z",
+          "trend_slope_z",
+          "mom_rank_z",
+          "mom_sharpe_z",
+          "vol_downside_z",
+          "gold_beta_z",
+          "dxy_mom_z",
+          "m2_mom_z",
+          "vix_level_z"
+        ],
+        "ic_values": {
+          "ar1_z": 0.10347804214792797,
+          "mr_speed_z": -0.10491920006196753,
+          "var_ratio_z": 0.08049290266587211,
+          "hurst_z": 0.10829302755692251,
+          "trend_slope_z": 0.06268992259286602,
+          "mom_rank_z": 0.040483390928698286,
+          "mom_sharpe_z": 0.0780032947070374,
+          "vol_downside_z": 0.06026091337687377,
+          "vol_skew_z": 0.024260022634324793,
+          "gold_mom_z": 0.00874431821900556,
+          "gold_beta_z": 0.03499623826561323,
+          "dxy_mom_z": 0.1038028181456207,
+          "mstr_mom_z": 0.021368797762458897,
+          "m2_mom_z": 0.20260548070223086,
+          "m2_beta_z": 0.028902944929224732,
+          "vix_level_z": 0.06324746437923866,
+          "vix_chg_z": -0.009807930649250883
+        }
+      },
+      "config": {
+        "target_type": "returns",
+        "orthogonalize": false,
+        "quantile_method": "gbm"
+      }
+    }
+  }
+}

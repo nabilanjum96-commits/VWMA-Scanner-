@@ -1,15 +1,15 @@
-name: VWMA Band Scanner
+name: Daily Forecast
 
 on:
   schedule:
-    # Run every 5 minutes
-    - cron: '*/5 * * * *'
+    # Daily at 1 AM UTC (8 PM ET)
+    - cron: '0 1 * * *'
   workflow_dispatch: # Allow manual trigger from GitHub UI
 
 jobs:
-  scan:
+  forecast:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 5
 
     steps:
       - uses: actions/checkout@v4
@@ -18,7 +18,7 @@ jobs:
         with:
           node-version: '20'
 
-      # Cache node_modules between runs (saves ~20s per run)
+      # Cache node_modules between runs
       - name: Cache dependencies
         uses: actions/cache@v4
         with:
@@ -28,23 +28,7 @@ jobs:
       - name: Install dependencies
         run: npm install --production
 
-      # Restore cooldowns from previous run
-      - name: Restore cooldowns
-        uses: actions/cache@v4
-        with:
-          path: cooldowns.json
-          key: cooldowns-${{ github.run_id }}
-          restore-keys: cooldowns-
-
-      # Restore state (command offset, last scan time)
-      - name: Restore state
-        uses: actions/cache@v4
-        with:
-          path: state.json
-          key: state-${{ github.run_id }}
-          restore-keys: state-
-
-      # Restore forecast cache (written by daily forecast job)
+      # Restore forecast cache from previous run
       - name: Restore forecast cache
         uses: actions/cache@v4
         with:
@@ -52,8 +36,8 @@ jobs:
           key: forecast-${{ github.run_id }}
           restore-keys: forecast-
 
-      - name: Run scanner
+      - name: Run daily forecast
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: node scanner-service.js
+        run: node forecast-job.js

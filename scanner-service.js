@@ -236,51 +236,198 @@ function shouldAlert(bandData) {
 // ── Telegram message ──────────────────────────────────────────────────
 
 function formatAlert(symbol, timeframe, data, trigger) {
-  const d = (v, dp) => v > 100 ? v.toFixed(dp || 2) : v.toFixed(dp || 4);
+  const fmt = (v) => v > 100 ? `$${v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : `$${v.toFixed(4)}`;
   const isUpper = trigger.direction === 'UPPER';
-  const emoji = isUpper ? '\u{1F534}' : '\u{1F7E2}';
-  const arrow = isUpper ? '\u25B2' : '\u25BC';
-  const bandLabel = isUpper ? 'Upper' : 'Lower';
   const bandPrice = isUpper ? data.upper3s : data.lower3s;
-  const outerPrice = isUpper ? data.upper6s : data.lower6s;
-  const pctInto6s = isUpper ? data.pctInto6sUpper : data.pctInto6sLower;
+  const sixSigmaPrice = isUpper ? data.upper6s : data.lower6s;
+  const line = '\u2501'.repeat(26);
 
-  const slopeArrow = (v) => {
-    if (v === null) return '\u2014';
-    if (v > 0.5) return `\u2191 +${v.toFixed(2)}%`;
-    if (v < -0.5) return `\u2193 ${v.toFixed(2)}%`;
-    return `\u2192 ${v.toFixed(2)}%`;
+  // Price/VWMA delta
+  const vwmaDelta = ((data.currentPrice - data.vwma) / data.vwma) * 100;
+  const vwmaDeltaStr = `${vwmaDelta >= 0 ? '+' : ''}${vwmaDelta.toFixed(2)}%`;
+
+  // Distance from price to 6σ band
+  const distTo6s = ((sixSigmaPrice - data.currentPrice) / data.currentPrice) * 100;
+  const distTo6sStr = `${distTo6s >= 0 ? '+' : ''}${distTo6s.toFixed(2)}%`;
+
+  // Ordinal percentile helper
+  const ordinal = (n) => {
+    if (n == null) return '\u2014';
+    const s = ['th', 'st', 'nd', 'rd'];
+    const v = n % 100;
+    return `${n}${s[(v - 20) % 10] || s[v] || s[0]}`;
   };
-  const pctile = (v) => v != null ? `${v}%` : '\u2014';
 
-  let msg = `${emoji} <b>VWMA BAND ALERT</b> \u2014 ${symbol} ${timeframe}\n`;
-  msg += `${arrow} Price at <b>${bandLabel} 3\u03C3</b>\n`;
-  msg += `\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n`;
-  msg += `\u{1F4B0} Price:     <code>${d(data.currentPrice)}</code>\n`;
-  msg += `\u{1F4CA} 100-VWMA:  <code>${d(data.vwma)}</code>\n`;
-  msg += `\u{1F4CF} 3\u03C3 Band:   <code>${d(bandPrice)}</code>\n`;
-  msg += `\u{1F4CF} 6\u03C3 Band:   <code>${d(outerPrice)}</code>\n`;
-  msg += `\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n`;
-  msg += `\u{1F3AF} Z-Score:        <code>${data.priceZScore}\u03C3</code>\n`;
+  // Slope formatting
+  const fmtSlope = (v) => {
+    if (v === null) return '\u2014';
+    return `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
+  };
+
+  let msg = `${line}\n`;
+  msg += `\u26A0\uFE0F <b>VWMA 3\u03C3 ALERT</b> \u2014 ${symbol} ${timeframe}\n`;
+  msg += `${line}\n\n`;
+
+  msg += `<code>PRICE      ${fmt(data.currentPrice)}</code>\n`;
+  msg += `<code>VWMA       ${fmt(data.vwma)}</code>    (${vwmaDeltaStr})\n`;
+  msg += `<code>Z-SCORE    ${data.priceZScore}\u03C3</code>\n`;
   if (data.rsi != null) {
-    msg += `\u{1F4C8} RSI(14):        <code>${data.rsi}</code>\n`;
+    msg += `<code>RSI(14)    ${data.rsi}</code>\n`;
   }
-  msg += `\u{1F4D0} 3\u03C3\u21926\u03C3 Spread:   <code>${data.spreadPct}%</code>  (${pctile(data.spreadPercentile)} pctile)\n`;
-  if (pctInto6s > 0) {
-    msg += `\u26A1 Into 6\u03C3 zone:   <code>${pctInto6s}%</code>\n`;
-  }
-  msg += `\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n`;
-  msg += `\u{1F4C8} VWMA Slope:\n`;
-  msg += `   Short (${CONFIG.slopeShort}): <code>${slopeArrow(data.slopeShort)}</code>  (${pctile(data.slopeShortPctile)} pctile)\n`;
-  msg += `   Long  (${CONFIG.slopeLong}):  <code>${slopeArrow(data.slopeLong)}</code>  (${pctile(data.slopeLongPctile)} pctile)\n`;
-  msg += `\n\u{1F4A1} Bias: <b>${trigger.side}</b>`;
+  msg += `\n`;
+
+  msg += `<code>\u25B8 3\u03C3 BAND    ${fmt(bandPrice)}</code>\n`;
+  msg += `<code>\u25B8 6\u03C3 BAND    ${fmt(sixSigmaPrice)}</code>    (${distTo6sStr} away)\n`;
+  msg += `\n`;
+
+  msg += `<code>SPREAD 3\u21926\u03C3   ${data.spreadPct}%</code>  \u2503 ${ordinal(data.spreadPercentile)} pctile\n`;
+  msg += `<code>SLOPE SHORT   ${fmtSlope(data.slopeShort)}</code> \u2503 ${ordinal(data.slopeShortPctile)} pctile\n`;
+  msg += `<code>SLOPE LONG    ${fmtSlope(data.slopeLong)}</code> \u2503 ${ordinal(data.slopeLongPctile)} pctile\n`;
+  msg += `\n`;
+
+  msg += `<b>SIGNAL \u25B8 ${trigger.side}</b>\n`;
+  msg += line;
 
   return msg;
+}
+
+// ── Forecast cache (read-only, written by forecast-job.js) ────────────
+
+const FORECAST_CACHE_FILE = path.join(__dirname, 'forecast-cache.json');
+const STATE_FILE = path.join(__dirname, 'state.json');
+
+function loadForecastCache() {
+  try {
+    if (fs.existsSync(FORECAST_CACHE_FILE)) {
+      const data = JSON.parse(fs.readFileSync(FORECAST_CACHE_FILE, 'utf8'));
+      // Only use if less than 36 hours old
+      if (Date.now() - data.timestamp < 36 * 60 * 60 * 1000) {
+        return data.forecasts || {};
+      }
+    }
+  } catch (e) {}
+  return {};
+}
+
+function loadState() {
+  try {
+    if (fs.existsSync(STATE_FILE)) return JSON.parse(fs.readFileSync(STATE_FILE, 'utf8'));
+  } catch (e) {}
+  return { lastUpdateId: 0, lastScan: null };
+}
+
+function saveState(state) {
+  fs.writeFileSync(STATE_FILE, JSON.stringify(state));
+}
+
+// ── Forecast context for alerts ───────────────────────────────────────
+
+function getForecastContext(symbol, forecastCache) {
+  const data = forecastCache[symbol];
+  if (!data) return '';
+
+  const h = data['7d'];
+  if (!h) return '';
+
+  const q50 = h.q50Raw || h.ridgeReturnRaw || 0;
+  const q10 = h.q10Raw || 0;
+  const q90 = h.q90Raw || 0;
+  const dir = q50 > 0.005 ? 'LONG' : q50 < -0.005 ? 'SHORT' : 'FLAT';
+  const q50Str = `${q50 >= 0 ? '+' : ''}${(q50 * 100).toFixed(1)}%`;
+  const rangeStr = `${(q10 * 100).toFixed(1)}% / ${(q90 * 100).toFixed(1)}%`;
+
+  let ctx = `\n<code>FORECAST 7D:</code>\n`;
+  ctx += `<code>  Q50: ${q50Str}  \u2503  Q10/Q90: ${rangeStr}</code>\n`;
+  return ctx;
+}
+
+// ── Command handling (checks for pending Telegram commands) ───────────
+
+async function handleCommands(state, forecastCache) {
+  try {
+    const updates = await bot.getUpdates({ offset: state.lastUpdateId + 1, timeout: 0, limit: 10 });
+    if (!updates || updates.length === 0) return;
+
+    for (const update of updates) {
+      state.lastUpdateId = update.update_id;
+      const msg = update.message;
+      if (!msg || !msg.text || String(msg.chat.id) !== TELEGRAM_CHAT_ID) continue;
+
+      const cmd = msg.text.split(' ')[0].toLowerCase();
+      const line = '\u2501'.repeat(26);
+
+      if (cmd === '/help') {
+        await bot.sendMessage(TELEGRAM_CHAT_ID,
+          `${line}\n<b>VWMA CLOUD SCANNER</b>\n${line}\n\n` +
+          `<code>/scan</code>      \u25B8 Force scan now\n` +
+          `<code>/forecast</code>  \u25B8 Daily forecast summary\n` +
+          `<code>/status</code>    \u25B8 Scanner health\n` +
+          `<code>/help</code>      \u25B8 This message\n\n` +
+          `Scanner runs every 5 min via GitHub Actions.\n` +
+          `Forecasts refresh daily at 8 PM ET.`,
+          { parse_mode: 'HTML' });
+
+      } else if (cmd === '/status') {
+        const lastScan = state.lastScan ? new Date(state.lastScan).toLocaleString('en-US', { timeZone: 'America/New_York' }) : 'Never';
+        const hasForecast = Object.keys(forecastCache).length > 0;
+        await bot.sendMessage(TELEGRAM_CHAT_ID,
+          `${line}\n<b>SCANNER STATUS</b>\n${line}\n\n` +
+          `<code>Last scan:    ${lastScan} ET</code>\n` +
+          `<code>Symbols:      ${CONFIG.symbols.length}</code>\n` +
+          `<code>Timeframes:   ${CONFIG.timeframes.join(', ')}</code>\n` +
+          `<code>Cooldown:     ${CONFIG.cooldownMinutes} min</code>\n` +
+          `<code>Forecast:     ${hasForecast ? 'Cached' : 'No data'}</code>`,
+          { parse_mode: 'HTML' });
+
+      } else if (cmd === '/forecast') {
+        if (Object.keys(forecastCache).length === 0) {
+          await bot.sendMessage(TELEGRAM_CHAT_ID, 'No forecast data cached. Forecasts refresh daily at 8 PM ET.');
+          continue;
+        }
+
+        const rows = [];
+        for (const [sym, data] of Object.entries(forecastCache)) {
+          const h = data?.['7d'];
+          if (!h) continue;
+          const q50 = h.q50Raw || h.ridgeReturnRaw || 0;
+          const q10 = h.q10Raw || 0;
+          const q90 = h.q90Raw || 0;
+          const dir = q50 > 0.005 ? 'LONG' : q50 < -0.005 ? 'SHORT' : 'FLAT';
+          rows.push({ sym, dir, q50, q10, q90, absQ50: Math.abs(q50) });
+        }
+        rows.sort((a, b) => b.absQ50 - a.absQ50);
+
+        let reply = `${line}\n<b>7D FORECAST (Ridge + GBM)</b>\n${line}\n\n`;
+        reply += `<code>SYMBOL   DIR      Q50     Q10 / Q90</code>\n`;
+        reply += `<code>${'\u2500'.repeat(40)}</code>\n`;
+        for (const r of rows) {
+          const q50Str = `${r.q50 >= 0 ? '+' : ''}${(r.q50 * 100).toFixed(1)}%`;
+          const q10Str = `${(r.q10 * 100).toFixed(1)}%`;
+          const q90Str = `${(r.q90 * 100).toFixed(1)}%`;
+          reply += `<code>${r.sym.padEnd(8)} ${r.dir.padEnd(6)}  ${q50Str.padStart(6)}   ${q10Str.padStart(6)} / ${q90Str.padStart(5)}</code>\n`;
+        }
+        reply += `\n${line}`;
+        await bot.sendMessage(TELEGRAM_CHAT_ID, reply, { parse_mode: 'HTML' });
+
+      } else if (cmd === '/scan') {
+        await bot.sendMessage(TELEGRAM_CHAT_ID, 'Scanning now...');
+        // The main scan will run right after this function returns
+      }
+    }
+  } catch (err) {
+    console.warn(`[Commands] ${err.message}`);
+  }
 }
 
 // ── Main scan pass ────────────────────────────────────────────────────
 
 async function main() {
+  const state = loadState();
+  const forecastCache = loadForecastCache();
+
+  // Check for pending Telegram commands first
+  await handleCommands(state, forecastCache);
+
   console.log(`[Scanner] Starting scan — ${CONFIG.symbols.length} symbols, timeframes: ${CONFIG.timeframes.join(', ')}`);
 
   const cooldowns = loadCooldowns();
@@ -297,7 +444,9 @@ async function main() {
 
         const trigger = shouldAlert(bandData);
         if (trigger && !isOnCooldown(cooldowns, symbol, timeframe, trigger.direction)) {
-          const msg = formatAlert(symbol, timeframe, bandData, trigger);
+          let msg = formatAlert(symbol, timeframe, bandData, trigger);
+          // Append forecast context if available
+          msg += getForecastContext(symbol, forecastCache);
           try {
             await bot.sendMessage(TELEGRAM_CHAT_ID, msg, { parse_mode: 'HTML' });
             console.log(`[ALERT] ${symbol} ${timeframe} ${trigger.side} @ ${bandData.currentPrice} (Z: ${bandData.priceZScore}, RSI: ${bandData.rsi})`);
@@ -317,6 +466,8 @@ async function main() {
   }
 
   saveCooldowns(cooldowns);
+  state.lastScan = Date.now();
+  saveState(state);
   console.log(`[Scanner] Done — ${totalAlerts} alert(s) sent`);
 }
 

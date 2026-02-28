@@ -1,3 +1,5 @@
 node_modules/
 cooldowns.json
+state.json
+forecast-cache.json
 .env
