@@ -1,0 +1,16 @@
+{
+  "name": "vwma-cloud-scanner",
+  "version": "1.0.0",
+  "description": "Standalone VWMA Band Scanner — 24/7 Telegram alerts",
+  "main": "scanner-service.js",
+  "scripts": {
+    "start": "node scanner-service.js"
+  },
+  "dependencies": {
+    "ccxt": "^4.4.0",
+    "node-telegram-bot-api": "^0.66.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

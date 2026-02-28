@@ -1,0 +1,43 @@
+name: VWMA Band Scanner
+
+on:
+  schedule:
+    # Run every 5 minutes
+    - cron: '*/5 * * * *'
+  workflow_dispatch: # Allow manual trigger from GitHub UI
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # Cache node_modules between runs (saves ~20s per run)
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: deps-${{ hashFiles('package-lock.json', 'package.json') }}
+
+      - name: Install dependencies
+        run: npm install --production
+
+      # Restore cooldowns from previous run
+      - name: Restore cooldowns
+        uses: actions/cache@v4
+        with:
+          path: cooldowns.json
+          key: cooldowns-${{ github.run_id }}
+          restore-keys: cooldowns-
+
+      - name: Run scanner
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: node scanner-service.js
