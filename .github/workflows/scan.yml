@@ -1,10 +1,9 @@
 name: VWMA Band Scanner
 
 on:
-  # Disabled — scanner runs locally with real-time Telegram polling
-  # schedule:
-  #   - cron: '*/5 * * * *'
-  workflow_dispatch: # Manual trigger only (for testing)
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
 
 jobs:
   scan:

@@ -29,6 +29,13 @@ if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
   process.exit(1);
 }
 
+// ── Cloud vs Local mode ──────────────────────────────────────────────
+// GitHub Actions → Coinbase (US-friendly, no VPN needed)
+// Local          → Bybit (requires VPN)
+
+const IS_CLOUD = !!process.env.GITHUB_ACTIONS;
+const EXCHANGE_ID = process.env.EXCHANGE || (IS_CLOUD ? 'coinbase' : 'bybit');
+
 const CORE_ASSETS = [
   'BTC', 'ETH', 'BNB', 'XRP', 'SOL',
   'DOGE', 'ADA', 'LINK', 'AVAX', 'HBAR',
@@ -45,7 +52,7 @@ const CONFIG = {
   cooldownMinutes: parseInt(process.env.COOLDOWN_MINUTES) || 60,
   symbols: process.env.SYMBOLS ? process.env.SYMBOLS.split(',').map(s => s.trim()) : CORE_ASSETS,
   timeframes: process.env.TIMEFRAMES ? process.env.TIMEFRAMES.split(',').map(s => s.trim()) : ['5m'],
-  quote: 'USDT',
+  quote: EXCHANGE_ID === 'coinbase' ? 'USD' : 'USDT',
 };
 
 const BARS_TO_FETCH = 700;
@@ -53,8 +60,13 @@ const COOLDOWN_FILE = path.join(__dirname, 'cooldowns.json');
 
 // ── Exchange + Telegram ───────────────────────────────────────────────
 
-const exchange = new ccxt.bybit({ enableRateLimit: true });
-const bot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: true });
+function getSymbol(symbol) {
+  if (EXCHANGE_ID === 'coinbase') return `${symbol}/${CONFIG.quote}`;
+  return `${symbol}/${CONFIG.quote}:${CONFIG.quote}`;
+}
+
+const exchange = new ccxt[EXCHANGE_ID]({ enableRateLimit: true });
+const bot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: !IS_CLOUD });
 
 // ── Cooldown persistence (survives between GitHub Actions runs) ───────
 
@@ -376,7 +388,10 @@ function formatFullTable(results, timeframe) {
     const prefix = r.trigger ? '\u25B8' : ' ';
     const z = `${r.data.priceZScore >= 0 ? '+' : ''}${r.data.priceZScore.toFixed(1)}\u03C3`;
     const rsi = r.data.rsi != null ? Math.round(r.data.rsi).toString() : '\u2014';
-    msg += `<code>${prefix}${r.symbol.padEnd(6)} ${fmtP(r.data.currentPrice).padStart(8)}  ${z.padStart(5)} ${rsi.padStart(4)}  ${sig}</code>\n`;
+    const isExtremeZ = Math.abs(r.data.priceZScore) >= 2.5;
+    const zMark = isExtremeZ ? '*' : ' ';
+    const zFlag = isExtremeZ ? ' \uD83D\uDFE2' : '';
+    msg += `<code>${prefix}${r.symbol.padEnd(6)} ${fmtP(r.data.currentPrice).padStart(8)}  ${z.padStart(5)}${zMark}${rsi.padStart(4)}  ${sig}</code>${zFlag}\n`;
   }
 
   msg += `\n`;
@@ -390,10 +405,19 @@ function formatFullTable(results, timeframe) {
     const bw = ord(r.data.spreadPercentile).padStart(5);
     const ss = ord(r.data.slopeShortPctile).padStart(5);
     const sl = ord(r.data.slopeLongPctile).padStart(5);
-    msg += `<code>${prefix}${r.symbol.padEnd(6)} ${bw}   ${ss}  ${sl}</code>\n`;
+    const isExtBW = r.data.spreadPercentile != null && (r.data.spreadPercentile <= 25 || r.data.spreadPercentile >= 75);
+    const isExtSS = r.data.slopeShortPctile != null && (r.data.slopeShortPctile <= 25 || r.data.slopeShortPctile >= 75);
+    const isExtSL = r.data.slopeLongPctile != null && (r.data.slopeLongPctile <= 25 || r.data.slopeLongPctile >= 75);
+    const bwM = isExtBW ? '*' : ' ';
+    const ssM = isExtSS ? '*' : ' ';
+    const slM = isExtSL ? '*' : ' ';
+    const hasExtPct = isExtBW || isExtSS || isExtSL;
+    const pctFlag = hasExtPct ? ' \uD83D\uDFE2' : '';
+    msg += `<code>${prefix}${r.symbol.padEnd(6)} ${bw}${bwM}  ${ss}${ssM} ${sl}${slM}</code>${pctFlag}\n`;
   }
 
   msg += `\n<code>\u25B8 = Active 3\u03C3 signal</code>\n`;
+  msg += `<code>* = Extreme (|Z| \u2265 2.5 or pctile \u226425/\u226575)</code>\n`;
   msg += line;
 
   return msg;
@@ -406,7 +430,7 @@ async function runFullScan(timeframe) {
 
   for (const symbol of CONFIG.symbols) {
     try {
-      const ccxtSymbol = `${symbol}/${CONFIG.quote}:${CONFIG.quote}`;
+      const ccxtSymbol = getSymbol(symbol);
       const ohlcv = await exchange.fetchOHLCV(ccxtSymbol, timeframe, undefined, BARS_TO_FETCH);
       const data = analyze(ohlcv);
       if (!data) continue;
@@ -533,7 +557,7 @@ async function runScan() {
   for (const timeframe of CONFIG.timeframes) {
     for (const symbol of CONFIG.symbols) {
       try {
-        const ccxtSymbol = `${symbol}/${CONFIG.quote}:${CONFIG.quote}`;
+        const ccxtSymbol = getSymbol(symbol);
         const ohlcv = await exchange.fetchOHLCV(ccxtSymbol, timeframe, undefined, BARS_TO_FETCH);
 
         const bandData = analyze(ohlcv);
@@ -566,26 +590,36 @@ async function runScan() {
   console.log(`[Scanner] Done — ${totalAlerts} alert(s) sent`);
 }
 
-// ── Start: background scan loop + real-time command listener ─────────
+// ── Start: cloud (single scan) or local (continuous loop) ─────────────
 
 const SCAN_INTERVAL_MS = 5 * 60 * 1000;
 
-console.log(`[Scanner] VWMA Band Scanner starting — continuous mode`);
-console.log(`[Scanner] ${CONFIG.symbols.length} symbols, interval: 5 min, cooldown: ${CONFIG.cooldownMinutes} min`);
-console.log(`[Scanner] Telegram polling active — commands respond instantly`);
+console.log(`[Scanner] VWMA Band Scanner — ${IS_CLOUD ? 'CLOUD' : 'LOCAL'} mode`);
+console.log(`[Scanner] Exchange: ${EXCHANGE_ID}, ${CONFIG.symbols.length} symbols, cooldown: ${CONFIG.cooldownMinutes} min`);
 
-// Initial scan
-runScan().then(() => {
-  // Then loop every 5 minutes
-  setInterval(async () => {
-    try {
-      forecastCache = loadForecastCache();
-      await runScan();
-    } catch (err) {
-      console.error(`[Error] Scan cycle failed: ${err.message}`);
-    }
-  }, SCAN_INTERVAL_MS);
-}).catch(err => {
-  console.error('[Fatal]', err.message);
-  process.exit(1);
-});
+if (IS_CLOUD) {
+  // GitHub Actions: single scan pass → exit
+  runScan().then(() => {
+    console.log('[Scanner] Cloud scan complete, exiting');
+    process.exit(0);
+  }).catch(err => {
+    console.error('[Fatal]', err.message);
+    process.exit(1);
+  });
+} else {
+  // Local: continuous loop + real-time Telegram command polling
+  console.log(`[Scanner] Polling active — /vwma, /help, /status respond instantly`);
+  runScan().then(() => {
+    setInterval(async () => {
+      try {
+        forecastCache = loadForecastCache();
+        await runScan();
+      } catch (err) {
+        console.error(`[Error] Scan cycle failed: ${err.message}`);
+      }
+    }, SCAN_INTERVAL_MS);
+  }).catch(err => {
+    console.error('[Fatal]', err.message);
+    process.exit(1);
+  });
+}
