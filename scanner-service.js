@@ -53,7 +53,7 @@ const COOLDOWN_FILE = path.join(__dirname, 'cooldowns.json');
 
 // ── Exchange + Telegram ───────────────────────────────────────────────
 
-const exchange = new ccxt.binanceusdm({ enableRateLimit: true });
+const exchange = new ccxt.bybit({ enableRateLimit: true });
 const bot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: false });
 
 // ── Cooldown persistence (survives between GitHub Actions runs) ───────
