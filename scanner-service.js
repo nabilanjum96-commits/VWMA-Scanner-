@@ -359,7 +359,7 @@ async function handleCommands(state, forecastCache) {
       if (cmd === '/help') {
         await bot.sendMessage(TELEGRAM_CHAT_ID,
           `${line}\n<b>VWMA CLOUD SCANNER</b>\n${line}\n\n` +
-          `<code>/scan</code>      \u25B8 Force scan now\n` +
+          `<code>/vwma</code>      \u25B8 Force VWMA band scan now\n` +
           `<code>/forecast</code>  \u25B8 Daily forecast summary\n` +
           `<code>/status</code>    \u25B8 Scanner health\n` +
           `<code>/help</code>      \u25B8 This message\n\n` +
@@ -409,8 +409,8 @@ async function handleCommands(state, forecastCache) {
         reply += `\n${line}`;
         await bot.sendMessage(TELEGRAM_CHAT_ID, reply, { parse_mode: 'HTML' });
 
-      } else if (cmd === '/scan') {
-        await bot.sendMessage(TELEGRAM_CHAT_ID, 'Scanning now...');
+      } else if (cmd === '/vwma') {
+        await bot.sendMessage(TELEGRAM_CHAT_ID, 'Running VWMA band scan...');
         // The main scan will run right after this function returns
       }
     }

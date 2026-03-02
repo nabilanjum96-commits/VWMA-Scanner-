@@ -17,7 +17,7 @@ const bot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: false });
 
 async function setup() {
   const commands = [
-    { command: 'scan', description: 'Force scan all symbols now' },
+    { command: 'vwma', description: 'Force VWMA band scan now' },
     { command: 'forecast', description: 'Show latest daily forecast' },
     { command: 'status', description: 'Scanner health + last scan time' },
     { command: 'help', description: 'List available commands' },
