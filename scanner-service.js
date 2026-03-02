@@ -54,7 +54,7 @@ const COOLDOWN_FILE = path.join(__dirname, 'cooldowns.json');
 // ── Exchange + Telegram ───────────────────────────────────────────────
 
 const exchange = new ccxt.bybit({ enableRateLimit: true });
-const bot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: false });
+const bot = new TelegramBot(TELEGRAM_BOT_TOKEN, { polling: true });
 
 // ── Cooldown persistence (survives between GitHub Actions runs) ───────
 
@@ -341,96 +341,193 @@ function getForecastContext(symbol, forecastCache) {
   return ctx;
 }
 
-// ── Command handling (checks for pending Telegram commands) ───────────
+// ── Full table formatter (all symbols for a given timeframe) ──────────
 
-async function handleCommands(state, forecastCache) {
-  try {
-    const updates = await bot.getUpdates({ offset: state.lastUpdateId + 1, timeout: 0, limit: 10 });
-    if (!updates || updates.length === 0) return;
+function formatFullTable(results, timeframe) {
+  const line = '\u2501'.repeat(34);
+  const dash = '\u2500'.repeat(34);
 
-    for (const update of updates) {
-      state.lastUpdateId = update.update_id;
-      const msg = update.message;
-      if (!msg || !msg.text || String(msg.chat.id) !== TELEGRAM_CHAT_ID) continue;
+  // Ordinal helper
+  const ord = (n) => {
+    if (n == null) return '\u2014';
+    const s = ['th', 'st', 'nd', 'rd'];
+    const v = n % 100;
+    return `${n}${s[(v - 20) % 10] || s[v] || s[0]}`;
+  };
 
-      const cmd = msg.text.split(' ')[0].toLowerCase();
-      const line = '\u2501'.repeat(26);
+  // Price formatter — compact
+  const fmtP = (v) => {
+    if (v >= 10000) return v.toLocaleString('en-US', { maximumFractionDigits: 0 });
+    if (v >= 100) return v.toFixed(1);
+    if (v >= 1) return v.toFixed(2);
+    return v.toFixed(4);
+  };
 
-      if (cmd === '/help') {
-        await bot.sendMessage(TELEGRAM_CHAT_ID,
-          `${line}\n<b>VWMA CLOUD SCANNER</b>\n${line}\n\n` +
-          `<code>/vwma</code>      \u25B8 Force VWMA band scan now\n` +
-          `<code>/forecast</code>  \u25B8 Daily forecast summary\n` +
-          `<code>/status</code>    \u25B8 Scanner health\n` +
-          `<code>/help</code>      \u25B8 This message\n\n` +
-          `Scanner runs every 5 min via GitHub Actions.\n` +
-          `Forecasts refresh daily at 8 PM ET.`,
-          { parse_mode: 'HTML' });
+  let msg = `${line}\n`;
+  msg += ` <b>VWMA BAND SCAN \u2014 ${timeframe}</b>\n`;
+  msg += `${line}\n\n`;
 
-      } else if (cmd === '/status') {
-        const lastScan = state.lastScan ? new Date(state.lastScan).toLocaleString('en-US', { timeZone: 'America/New_York' }) : 'Never';
-        const hasForecast = Object.keys(forecastCache).length > 0;
-        await bot.sendMessage(TELEGRAM_CHAT_ID,
-          `${line}\n<b>SCANNER STATUS</b>\n${line}\n\n` +
-          `<code>Last scan:    ${lastScan} ET</code>\n` +
-          `<code>Symbols:      ${CONFIG.symbols.length}</code>\n` +
-          `<code>Timeframes:   ${CONFIG.timeframes.join(', ')}</code>\n` +
-          `<code>Cooldown:     ${CONFIG.cooldownMinutes} min</code>\n` +
-          `<code>Forecast:     ${hasForecast ? 'Cached' : 'No data'}</code>`,
-          { parse_mode: 'HTML' });
+  // Part 1: Price & Signal
+  msg += `<code>SYM     PRICE      Z    RSI  SIG</code>\n`;
+  msg += `<code>${dash}</code>\n`;
 
-      } else if (cmd === '/forecast') {
-        if (Object.keys(forecastCache).length === 0) {
-          await bot.sendMessage(TELEGRAM_CHAT_ID, 'No forecast data cached. Forecasts refresh daily at 8 PM ET.');
-          continue;
-        }
-
-        const rows = [];
-        for (const [sym, data] of Object.entries(forecastCache)) {
-          const h = data?.['7d'];
-          if (!h) continue;
-          const q50 = h.q50Raw || h.ridgeReturnRaw || 0;
-          const q10 = h.q10Raw || 0;
-          const q90 = h.q90Raw || 0;
-          const dir = q50 > 0.005 ? 'LONG' : q50 < -0.005 ? 'SHORT' : 'FLAT';
-          rows.push({ sym, dir, q50, q10, q90, absQ50: Math.abs(q50) });
-        }
-        rows.sort((a, b) => b.absQ50 - a.absQ50);
-
-        let reply = `${line}\n<b>7D FORECAST (Ridge + GBM)</b>\n${line}\n\n`;
-        reply += `<code>SYMBOL   DIR      Q50     Q10 / Q90</code>\n`;
-        reply += `<code>${'\u2500'.repeat(40)}</code>\n`;
-        for (const r of rows) {
-          const q50Str = `${r.q50 >= 0 ? '+' : ''}${(r.q50 * 100).toFixed(1)}%`;
-          const q10Str = `${(r.q10 * 100).toFixed(1)}%`;
-          const q90Str = `${(r.q90 * 100).toFixed(1)}%`;
-          reply += `<code>${r.sym.padEnd(8)} ${r.dir.padEnd(6)}  ${q50Str.padStart(6)}   ${q10Str.padStart(6)} / ${q90Str.padStart(5)}</code>\n`;
-        }
-        reply += `\n${line}`;
-        await bot.sendMessage(TELEGRAM_CHAT_ID, reply, { parse_mode: 'HTML' });
-
-      } else if (cmd === '/vwma') {
-        await bot.sendMessage(TELEGRAM_CHAT_ID, 'Running VWMA band scan...');
-        // The main scan will run right after this function returns
-      }
-    }
-  } catch (err) {
-    console.warn(`[Commands] ${err.message}`);
+  for (const r of results) {
+    const sig = r.trigger ? (r.trigger.side === 'LONG' ? 'LNG' : 'SHT') : ' \u2014 ';
+    const prefix = r.trigger ? '\u25B8' : ' ';
+    const z = `${r.data.priceZScore >= 0 ? '+' : ''}${r.data.priceZScore.toFixed(1)}\u03C3`;
+    const rsi = r.data.rsi != null ? Math.round(r.data.rsi).toString() : '\u2014';
+    msg += `<code>${prefix}${r.symbol.padEnd(6)} ${fmtP(r.data.currentPrice).padStart(8)}  ${z.padStart(5)} ${rsi.padStart(4)}  ${sig}</code>\n`;
   }
+
+  msg += `\n`;
+
+  // Part 2: Spread & Slope Percentiles
+  msg += `<code>SYM    BW Pct  Slp S  Slp L</code>\n`;
+  msg += `<code>${dash}</code>\n`;
+
+  for (const r of results) {
+    const prefix = r.trigger ? '\u25B8' : ' ';
+    const bw = ord(r.data.spreadPercentile).padStart(5);
+    const ss = ord(r.data.slopeShortPctile).padStart(5);
+    const sl = ord(r.data.slopeLongPctile).padStart(5);
+    msg += `<code>${prefix}${r.symbol.padEnd(6)} ${bw}   ${ss}  ${sl}</code>\n`;
+  }
+
+  msg += `\n<code>\u25B8 = Active 3\u03C3 signal</code>\n`;
+  msg += line;
+
+  return msg;
 }
 
-// ── Main scan pass ────────────────────────────────────────────────────
+// ── On-demand full scan (triggered by /vwma callback) ────────────────
 
-async function main() {
-  const state = loadState();
-  const forecastCache = loadForecastCache();
+async function runFullScan(timeframe) {
+  const results = [];
 
-  // Check for pending Telegram commands first
-  await handleCommands(state, forecastCache);
+  for (const symbol of CONFIG.symbols) {
+    try {
+      const ccxtSymbol = `${symbol}/${CONFIG.quote}:${CONFIG.quote}`;
+      const ohlcv = await exchange.fetchOHLCV(ccxtSymbol, timeframe, undefined, BARS_TO_FETCH);
+      const data = analyze(ohlcv);
+      if (!data) continue;
+      const trigger = shouldAlert(data);
+      results.push({ symbol, data, trigger });
+    } catch (err) {
+      console.warn(`[FullScan] ${symbol} ${timeframe}: ${err.message}`);
+    }
+    await new Promise(r => setTimeout(r, 100));
+  }
 
+  return results;
+}
+
+// ── Real-time command handlers (instant response via polling) ─────────
+
+const appState = loadState();
+let forecastCache = loadForecastCache();
+const cooldowns = loadCooldowns();
+
+// /help
+bot.onText(/\/help/, async (msg) => {
+  if (String(msg.chat.id) !== TELEGRAM_CHAT_ID) return;
+  const line = '\u2501'.repeat(34);
+  await bot.sendMessage(TELEGRAM_CHAT_ID,
+    `${line}\n<b>VWMA CLOUD SCANNER</b>\n${line}\n\n` +
+    `<code>/vwma</code>      \u25B8 Full band scan (select TF)\n` +
+    `<code>/forecast</code>  \u25B8 Daily forecast summary\n` +
+    `<code>/status</code>    \u25B8 Scanner health\n` +
+    `<code>/help</code>      \u25B8 This message\n\n` +
+    `Auto-scans every 5 min on ${CONFIG.timeframes.join(', ')}.\n` +
+    `Forecasts refresh daily at 8 PM ET.`,
+    { parse_mode: 'HTML' });
+});
+
+// /status
+bot.onText(/\/status/, async (msg) => {
+  if (String(msg.chat.id) !== TELEGRAM_CHAT_ID) return;
+  const line = '\u2501'.repeat(34);
+  const lastScan = appState.lastScan ? new Date(appState.lastScan).toLocaleString('en-US', { timeZone: 'America/New_York' }) : 'Never';
+  const hasForecast = Object.keys(forecastCache).length > 0;
+  await bot.sendMessage(TELEGRAM_CHAT_ID,
+    `${line}\n<b>SCANNER STATUS</b>\n${line}\n\n` +
+    `<code>Last scan:    ${lastScan} ET</code>\n` +
+    `<code>Symbols:      ${CONFIG.symbols.length}</code>\n` +
+    `<code>Timeframes:   ${CONFIG.timeframes.join(', ')}</code>\n` +
+    `<code>Cooldown:     ${CONFIG.cooldownMinutes} min</code>\n` +
+    `<code>Forecast:     ${hasForecast ? 'Cached' : 'No data'}</code>`,
+    { parse_mode: 'HTML' });
+});
+
+// /forecast
+bot.onText(/\/forecast/, async (msg) => {
+  if (String(msg.chat.id) !== TELEGRAM_CHAT_ID) return;
+  const line = '\u2501'.repeat(34);
+
+  if (Object.keys(forecastCache).length === 0) {
+    await bot.sendMessage(TELEGRAM_CHAT_ID, 'No forecast data cached. Forecasts refresh daily at 8 PM ET.');
+    return;
+  }
+
+  const rows = [];
+  for (const [sym, data] of Object.entries(forecastCache)) {
+    const h = data?.['7d'];
+    if (!h) continue;
+    const q50 = h.q50Raw || h.ridgeReturnRaw || 0;
+    const q10 = h.q10Raw || 0;
+    const q90 = h.q90Raw || 0;
+    rows.push({ sym, dir: q50 > 0.005 ? 'LONG' : q50 < -0.005 ? 'SHORT' : 'FLAT', q50, q10, q90, absQ50: Math.abs(q50) });
+  }
+  rows.sort((a, b) => b.absQ50 - a.absQ50);
+
+  let reply = `${line}\n<b>7D FORECAST (Ridge + GBM)</b>\n${line}\n\n`;
+  reply += `<code>SYMBOL   DIR      Q50     Q10 / Q90</code>\n`;
+  reply += `<code>${'\u2500'.repeat(40)}</code>\n`;
+  for (const r of rows) {
+    const q50Str = `${r.q50 >= 0 ? '+' : ''}${(r.q50 * 100).toFixed(1)}%`;
+    const q10Str = `${(r.q10 * 100).toFixed(1)}%`;
+    const q90Str = `${(r.q90 * 100).toFixed(1)}%`;
+    reply += `<code>${r.sym.padEnd(8)} ${r.dir.padEnd(6)}  ${q50Str.padStart(6)}   ${q10Str.padStart(6)} / ${q90Str.padStart(5)}</code>\n`;
+  }
+  reply += `\n${line}`;
+  await bot.sendMessage(TELEGRAM_CHAT_ID, reply, { parse_mode: 'HTML' });
+});
+
+// /vwma — show timeframe selection keyboard
+bot.onText(/\/vwma/, async (msg) => {
+  if (String(msg.chat.id) !== TELEGRAM_CHAT_ID) return;
+  await bot.sendMessage(TELEGRAM_CHAT_ID, 'Select timeframe:', {
+    reply_markup: {
+      inline_keyboard: [[
+        { text: '1m', callback_data: 'vwma_1m' },
+        { text: '5m', callback_data: 'vwma_5m' },
+        { text: '1h', callback_data: 'vwma_1h' },
+        { text: '4h', callback_data: 'vwma_4h' },
+      ]]
+    }
+  });
+});
+
+// Callback query handler (timeframe button presses)
+bot.on('callback_query', async (cb) => {
+  const cbData = cb.data || '';
+
+  try { await bot.answerCallbackQuery(cb.id, { text: 'Scanning...' }); } catch (e) {}
+
+  if (cbData.startsWith('vwma_')) {
+    const tf = cbData.replace('vwma_', '');
+    console.log(`[Command] /vwma ${tf} requested`);
+
+    await bot.sendMessage(TELEGRAM_CHAT_ID, `Scanning ${CONFIG.symbols.length} symbols on <b>${tf}</b>...`, { parse_mode: 'HTML' });
+    const results = await runFullScan(tf);
+    const table = formatFullTable(results, tf);
+    await bot.sendMessage(TELEGRAM_CHAT_ID, table, { parse_mode: 'HTML' });
+  }
+});
+
+// ── Single scan pass (background auto-alerts) ───────────────────────
+
+async function runScan() {
   console.log(`[Scanner] Starting scan — ${CONFIG.symbols.length} symbols, timeframes: ${CONFIG.timeframes.join(', ')}`);
-
-  const cooldowns = loadCooldowns();
   let totalAlerts = 0;
 
   for (const timeframe of CONFIG.timeframes) {
@@ -445,7 +542,6 @@ async function main() {
         const trigger = shouldAlert(bandData);
         if (trigger && !isOnCooldown(cooldowns, symbol, timeframe, trigger.direction)) {
           let msg = formatAlert(symbol, timeframe, bandData, trigger);
-          // Append forecast context if available
           msg += getForecastContext(symbol, forecastCache);
           try {
             await bot.sendMessage(TELEGRAM_CHAT_ID, msg, { parse_mode: 'HTML' });
@@ -460,18 +556,36 @@ async function main() {
         console.warn(`[Skip] ${symbol} ${timeframe}: ${err.message}`);
       }
 
-      // Rate limit
       await new Promise(r => setTimeout(r, 100));
     }
   }
 
   saveCooldowns(cooldowns);
-  state.lastScan = Date.now();
-  saveState(state);
+  appState.lastScan = Date.now();
+  saveState(appState);
   console.log(`[Scanner] Done — ${totalAlerts} alert(s) sent`);
 }
 
-main().catch(err => {
+// ── Start: background scan loop + real-time command listener ─────────
+
+const SCAN_INTERVAL_MS = 5 * 60 * 1000;
+
+console.log(`[Scanner] VWMA Band Scanner starting — continuous mode`);
+console.log(`[Scanner] ${CONFIG.symbols.length} symbols, interval: 5 min, cooldown: ${CONFIG.cooldownMinutes} min`);
+console.log(`[Scanner] Telegram polling active — commands respond instantly`);
+
+// Initial scan
+runScan().then(() => {
+  // Then loop every 5 minutes
+  setInterval(async () => {
+    try {
+      forecastCache = loadForecastCache();
+      await runScan();
+    } catch (err) {
+      console.error(`[Error] Scan cycle failed: ${err.message}`);
+    }
+  }, SCAN_INTERVAL_MS);
+}).catch(err => {
   console.error('[Fatal]', err.message);
   process.exit(1);
 });

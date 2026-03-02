@@ -1,10 +1,10 @@
 name: Daily Forecast
 
 on:
-  schedule:
-    # Daily at 1 AM UTC (8 PM ET)
-    - cron: '0 1 * * *'
-  workflow_dispatch: # Allow manual trigger from GitHub UI
+  # Disabled — forecast runs locally
+  # schedule:
+  #   - cron: '0 1 * * *'
+  workflow_dispatch: # Manual trigger only (for testing)
 
 jobs:
   forecast:
